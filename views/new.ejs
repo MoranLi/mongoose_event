@@ -1,4 +1,11 @@
-<form action="/slides/new" method="POST" enctype="multipart/form-data" >
+<head>
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+    <script
+        src="https://code.jquery.com/jquery-3.3.1.min.js"
+        integrity="sha256-FgpCb/KJQlLNfOu91ta32o/NMZxltwRo8QtmkMRdAu8="
+        crossorigin="anonymous"></script>
+</head>
+<body>
     <div>
         <input type="text" name="title" placeholder="title">
         <br>
@@ -44,11 +51,94 @@
         <input type="text" name="time_font_style" placeholder="time_font_style">
     </div>
     <div>
-        <input type="file" name="image" accept="image/*" multiple>
+        <input type="file" name="image" accept="image/*" onchange="submitFile(this)">
     </div>
     <div>
         <input type="text" name="slide_settings" placeholder="slide_settings_time">
     </div>
     <a href="/">go back</a>
-    <input type="submit"/>
-</form>
+    <button onClick="submitSlide()">sumbit</button>
+    <script>
+        var image_list = [];
+        function submitFile(input){
+            var file = input.files[0];
+            axios.put('/image/new',{
+                image : file
+            })
+                .then(function (response) {
+                    alert("upload success")
+                    image_list.push(response);
+                })
+                .catch(function (error) {
+                    alert("err"+error);
+                });
+        }
+        function submitSlide(){
+            var atitle = document.getElementsByName("title")[0].value;
+            var atitle_color = document.getElementsByName("title_color")[0].value;
+            var atitle_font_size = document.getElementsByName("title_font_size")[0].value;
+            var atitle_font_style = document.getElementsByName("title_font_style")[0].value;
+            var atitle_font_weight = document.getElementsByName("title_font_weight")[0].value;
+            var adescription = document.getElementsByName("description")[0].value;
+            var adescription_color = document.getElementsByName("description_color")[0].value;
+            var adescription_font_size = document.getElementsByName("description_font_size")[0].value;
+            var adescription_font_style = document.getElementsByName("description_font_style")[0].value;
+            var adescription_font_weight = document.getElementsByName("description_font_weight")[0].value;
+            var adate = document.getElementsByName("date")[0].value;
+            var adate_color = document.getElementsByName("date_color")[0].value;
+            var adate_font_size = document.getElementsByName("date_font_size")[0].value;
+            var adate_font_style = document.getElementsByName("date_font_style")[0].value;
+            var adate_font_weight = document.getElementsByName("date_font_weight")[0].value;
+            var atime = document.getElementsByName("time")[0].value;
+            var atime_color = document.getElementsByName("time_color")[0].value;
+            var atime_font_size = document.getElementsByName("time_font_size")[0].value;
+            var atime_font_style = document.getElementsByName("time_font_style")[0].value;
+            var atime_font_weight = document.getElementsByName("time_font_weight")[0].value;
+            var aslide_settings = document.getElementsByName("slide_settings")[0].value;
+            // create object
+            var aslide = {
+                title: {
+                    title: atitle,
+                    color: atitle_color,
+                    font_size: atitle_font_size,
+                    font_weight: atitle_font_weight,
+                    font_style: atitle_font_style
+                },
+                description: {
+                    description: adescription,
+                    color: adescription_color,
+                    font_size: adescription_font_size,
+                    font_weight: adescription_font_weight,
+                    font_style: adescription_font_style
+                },
+                date: {
+                    date: adate,
+                    color: adate_color,
+                    font_size: adate_font_size,
+                    font_weight: adate_font_weight,
+                    font_style: adate_font_style
+                },
+                time:  {
+                    time: atime,
+                    color: atime_color,
+                    font_size: atime_font_size,
+                    font_weight: atime_font_weight,
+                    font_style: atime_font_style
+                },
+                images:image_list,
+                slide_settings: aslide_settings
+            };
+            axios.post('/slides/new', {
+                slide: aslide
+              })
+              .then(function (response) {
+                alert("success create")
+              })
+              .catch(function (error) {
+                alert(error);
+              });
+            image_list = [];
+        }
+    </script>
+</body>
+    

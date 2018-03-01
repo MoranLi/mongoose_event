@@ -14,15 +14,30 @@ mongoose.connect("mongodb://localhost/slide");
 seedDB();
 app.set("view engine","ejs");
 app.use(body_parser.urlencoded({extended:true}));
+app.use(body_parser.json());
+
 app.use(fileUpload());
 
 app.listen(process.env.PORT, process.env.IP, function(){
     console.log("yale camp server start");
 });
 
-// main page generally for testing
-app.get("/", function(req,res){
-    res.render("main");
+// get specific image by name
+app.get("/image/:path/:name", function(req,res){
+    const name = __dirname +"/"+req.params.path+"/"+req.params.name;
+    res.sendFile(name);
+});
+
+app.post("/image/new",function(req,res){
+    var images = req.body.image;
+    console.log(req.body);
+    return new Promise(function (resolve, reject) {
+        writeFilePromise("./image/"+images.name,images.path).then(function(value){
+            resolve("./image/"+images.name);
+        }).catch(function(err){
+            reject(err);
+        });
+    });
 });
 
 // getter for all slides
@@ -63,70 +78,8 @@ app.get("/show/:id", function(req,res){
     });
 });
 
-// view all image 
-app.get("/image", function(req,res){
-    var images = [];
-    fs.readdir("./image", (err, files) => {
-        if(err){
-            console.log(err);
-        }
-        var length = files.length;
-        var count = 0;
-        fs.recurse("./image", function(filepath, relative, filename) { 
-            encodeImgPromise("./"+filepath).then(function(value){
-                count++;
-                var image = {
-                    name: filename,
-                    data: value
-                };
-                images.push(image);
-                if(count == length){
-                    res.render("image",{images:images});
-                }
-            }).catch(function(err){
-                console.log(err);
-            });
-        });
-    });
-});
-
-// delete a image 
-app.post("/image/:path", function(req,res){
-    var path = req.params.path;
-    fs.unlink("./image/"+path,function(err){
-        if(err){
-            console.log(err);
-        }
-        else{
-            slide.find({}, function(err,allslide){
-                if(err){
-                    console.log(err);
-                }
-                else{
-                   allslide.forEach(function(slide, allindex){
-                       slide.images.forEach(function(image,index){
-                           // console.log("path: "+path);
-                           // console.log("image:"+image.path);
-                           if(image.path == ("image/"+path)){
-                               // console.log("image deleted")
-                               slide.images.splice(index,1);
-                               slide.save();
-                               if(allindex == allslide.length-1 && index == slide.images.length-1){
-                                    allslide.save();
-                                    res.render("main");
-                               }
-                           }
-                       });
-                   });
-                   res.render("main");
-                }
-            });
-            res.render("main");
-        }
-    });
-});
-
 // create new slide
+/*
 app.post("/slides/new", function(req,res){
     var fileUploaded = 0;
     var imageEncoded = 0;
@@ -185,8 +138,20 @@ app.post("/slides/new", function(req,res){
         res.render("main");
     }
 });
+*/
+app.post("/slides/new", function(req,res){
+    var slide = req.body.slide
+    createOrUpdateSlide(0,slide).then(function(resolve){
+
+    }).catch(function(err){
+        console.log(err);
+        
+    });
+    res.render("main");
+});
 
 // update exist slide
+/*
 app.post("/slides/:id", function(req,res){
     var fileUploaded = 0;
     var imageEncoded = 0;
@@ -245,7 +210,12 @@ app.post("/slides/:id", function(req,res){
         res.render("main");
     }
 });
-
+*/
+app.post("/slides/:id", function(req,res){
+    var images = req.body.image
+    createOrUpdateSlide(req.params.id,req,images);
+    res.render("main");
+});
 // following function are aim to reduce complexity and duplicate code for two post operation
 
 // conver req inforrmation to an object
@@ -309,29 +279,32 @@ function getSlideInfo(req){
 }
 
 // switch case for create or update slide by id input
-function createOrUpdateSlide(id, req, images64){
-    var aslide = getSlideInfo(req);
-    aslide.images = images64;
+function createOrUpdateSlide(id, aslide){
+    // var aslide = getSlideInfo(req);
+    // aslide.images = images64;
     if(id == 0){
-        slide.create(aslide, function(err, aslide){
-            if(err){
-                console.log(err);
-            }
-            else{
-                console.log("new slide created");
-            }
-            
+        return new Promise(function (resolve, reject) {
+            slide.create(aslide, function(err, aslide){
+                if(err){
+                    reject(err);
+                }
+                else{
+                    resolve();
+                }
+            });
         });
+        
     }
     else {
-        slide.update({_id:id},aslide,function(err){
-            if(err){
-                console.log(err);
-            }
-            else{
-                console.log("slide updated");
-            }
-            
+        return new Promise(function (resolve, reject) {
+            slide.update({_id:id},aslide,function(err){
+                if(err){
+                    reject(err);
+                }
+                else{
+                    resolve();
+                }
+            });
         });
     }
 }
@@ -364,11 +337,16 @@ function encodeImgPromise(path){
     });
 }
 
-// following code is only useful for testing
+// following code is only useful for testing, can be deleted for actual implementation
 
 // goto create new slide
 app.get("/slides/new", function(req,res){
     res.render("new");
+});
+
+// main page generally for testing
+app.get("/", function(req,res){
+    res.render("main");
 });
 
 // go to edit slide 
@@ -379,6 +357,66 @@ app.get("/slides/:id", function(req,res){
         }
         else{
             res.render("edit", {slide:findslide, id:req.params.id});
+        }
+    });
+});
+
+// view all image 
+app.get("/image", function(req,res){
+    var images = [];
+    fs.readdir("./image", (err, files) => {
+        if(err){
+            console.log(err);
+        }
+        var length = files.length;
+        var count = 0;
+        fs.recurse("./image", function(filepath, relative, filename) { 
+            encodeImgPromise("./"+filepath).then(function(value){
+                count++;
+                var image = {
+                    name: filename,
+                    data: value
+                };
+                images.push(image);
+                if(count == length){
+                    res.render("image",{images:images});
+                }
+            }).catch(function(err){
+                console.log(err);
+            });
+        });
+    });
+});
+
+// delete a image 
+app.post("/image/:path", function(req,res){
+    var path = req.params.path;
+    fs.unlink("./image/"+path,function(err){
+        if(err){
+            console.log(err);
+        }
+        else{
+            slide.find({}, function(err,allslide){
+                if(err){
+                    console.log(err);
+                }
+                else{
+                   allslide.forEach(function(slide, allindex){
+                       slide.images.forEach(function(image,index){
+                           if(image.path == ("image/"+path)){
+                               slide.images.splice(index,1);
+                               slide.save();
+                               if(allindex == allslide.length-1 && index == slide.images.length-1){
+                                    allslide.save();
+                                    res.render("main");
+                               }
+                           }
+                       });
+                   });
+                   res.render("main");
+                }
+            });
+            res.render("main");
         }
     });
 });
